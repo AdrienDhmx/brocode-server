@@ -21,6 +21,20 @@ Then you can run the image with this command (0.0.0.0 is to run on your local ma
 
 ```shell
  docker run -p 8080:8080 -e BROCODE_SERVER_IP=0.0.0.0 brocode-server  
-```  
+```
+
+#### using docker-compose:
+server listens on port 8083
+
+```shell
+ docker-compose up -d
+```
+
+down the server:
+
+```shell
+ docker-compose down
+```
+
 
 And now you can access the server at the distant address you specified or on your local machine at [localhost:8080](http://localhost:8080/).

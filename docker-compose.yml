@@ -1,0 +1,9 @@
+version: '3'
+services:
+  brocode-server:
+    build: .
+    image: brocode-server
+    environment:
+      - BROCODE_SERVER_IP=0.0.0.0
+    ports:
+      - 8083:8080

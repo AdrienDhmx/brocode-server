@@ -2,7 +2,11 @@ import 'dart:convert';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 
-class BrocodeRoutes {
+import 'models/lobby.dart';
+
+class BrocodeService {
+  Map<String, Lobby> lobbies = {};
+
   Handler get handler {
     final app = Router();
 
@@ -14,12 +18,29 @@ class BrocodeRoutes {
       return Response.ok('hello $name');
     });
 
+    app.get('/lobby', (Request request) async {
+      final lobbiesJson = {
+        "lobbies": [
+          ...lobbies.values.map((lobby) => lobby.toJson(summary: true)),
+        ]
+      };
+      return Response.ok(jsonEncode(lobbiesJson));
+    });
+
     app.post('/lobby', (Request request) async {
       final bodyString = await request.readAsString();
       final body = jsonDecode(bodyString);
-      final lobbyName = body["name"];
-      final lobbyOwnerName = body["ownerName"];
-      return Response.ok("Lobby created with the name '$lobbyName' by '$lobbyOwnerName'.");
+      final lobbyName = body["name"]?.toString();
+      final lobbyOwnerName = body["ownerName"]?.toString();
+
+      if(lobbyName == null || lobbyOwnerName == null) {
+        return Response.badRequest(body: body);
+      }
+
+      final lobby = Lobby(lobbyName: lobbyName, lobbyOwnerName: lobbyOwnerName);
+      lobbies[lobby.id] = lobby;
+
+      return Response.ok(jsonEncode(lobby.toJson()));
     });
 
     app.all('/<ignored|.*>', (Request request) {

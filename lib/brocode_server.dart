@@ -109,7 +109,7 @@ class BrocodeService {
         return Response.badRequest(body: "Lobby $lobbyId not found");
       }
 
-      lobby!.state = LobbyState.inGame;
+      lobby.state = LobbyState.inGame;
       return Response.ok("Game started.");
     });
   }
@@ -119,10 +119,6 @@ class BrocodeService {
 
     app.get('/', (Request request) {
       return Response.ok('Welcome to Brocode !');
-    });
-
-    app.all('/<ignored|.*>', (Request request) {
-      return Response.notFound('Page not found');
     });
 
     // /lobby
@@ -136,6 +132,10 @@ class BrocodeService {
 
     // /lobby/<lobbyId>/start-game
     startGame(app);
+
+    app.all('/<ignored|.*>', (Request request) {
+      return Response.notFound('Page not found');
+    });
 
     return app.call;
   }

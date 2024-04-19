@@ -27,7 +27,7 @@ Then you can run the image with this command (0.0.0.0 is to run on your local ma
 server listens on port 8083
 
 ```shell
- docker-compose up
+ docker-compose up -d
 ```
 
 down the server:

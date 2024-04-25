@@ -7,7 +7,7 @@ class Player {
 
   int _lastUpdate = 0;
   bool _isAFK = false;
-  bool _leftGame = false;
+  bool _hasLeft = false;
 
   bool hasShot = false;
   bool hasJumped = false;
@@ -23,7 +23,7 @@ class Player {
 
   /// Check if the player is AFK and return the result
   bool isAFK() {
-    if(_leftGame) {
+    if(_hasLeft) {
       return true;
     }
     final currentTime = DateTime.now().millisecondsSinceEpoch;
@@ -33,7 +33,7 @@ class Player {
 
   /// set the player as AFK
   void playerLeftGame() {
-    _leftGame = true;
+    _hasLeft = true;
     _isAFK = true;
   }
 
@@ -73,6 +73,7 @@ class Player {
       "id": id,
       "name": name,
       "isAFK": _isAFK,
+      "hasLeft": _hasLeft,
     };
 
     if (!summary) {

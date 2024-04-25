@@ -77,7 +77,6 @@ class Lobby {
       return {
         ...defaultJson,
         "owner": players[0].toJson(summary: true),
-        "playerCount": players.where((p) => !p.isAFK()).length,
       };
     }
 

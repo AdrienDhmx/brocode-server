@@ -1,7 +1,7 @@
 import '../utils/utils.dart';
 import 'player.dart';
 
-enum LobbyState {
+enum LobbyStatus {
   waiting,
   inGame,
   over,
@@ -17,8 +17,8 @@ class Lobby {
   late String _id;
   String get id => _id;
 
-  LobbyState state = LobbyState.waiting;
-  bool get isWaiting => state == LobbyState.waiting;
+  LobbyStatus status = LobbyStatus.waiting;
+  bool get isWaiting => status == LobbyStatus.waiting;
 
   int startTime = 0;
 
@@ -27,7 +27,7 @@ class Lobby {
   /// start the game for this lobby
   void startGame() {
     startTime = DateTime.now().millisecondsSinceEpoch;
-    state = LobbyState.inGame;
+    status = LobbyStatus.inGame;
     for (Player player in players) {
       player.startGame(startTime);
     }
@@ -35,7 +35,7 @@ class Lobby {
 
   /// Check all players to see if they are AFK
   void checkAFKPlayers() {
-    if(state != LobbyState.inGame) {
+    if(status != LobbyStatus.inGame) {
       return;
     }
 
@@ -71,6 +71,7 @@ class Lobby {
     final defaultJson = {
       "id": id,
       "name": lobbyName,
+      "lobbyStatus": status.index,
     };
 
     if(summary) {

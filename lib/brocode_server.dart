@@ -77,7 +77,7 @@ class BrocodeService {
       final lobby = lobbies.findById(lobbyId);
       if(lobby == null) {
         return lobbyNotFound(lobbyId);
-      } else if(lobby.state != LobbyState.waiting) {
+      } else if(lobby.status != LobbyStatus.waiting) {
         return Response.forbidden("The lobby doesn't accept new players at the moment.");
       }
 

@@ -14,6 +14,7 @@ class Player {
   Vector2 aimDirection = Vector2();
   double horizontalDirection = 0.0;
   int healthPoints = 100;
+  bool isReloading = false;
 
   /// init the player for the game
   void startGame(int time) {
@@ -39,12 +40,13 @@ class Player {
   }
 
   /// Update the player state
-  void update(bool hasShot, bool hasJumped, Vector2 aimDirection, double horizontalDirection, int healthPoints) {
+  void update(bool hasShot, bool hasJumped, Vector2 aimDirection, double horizontalDirection, int healthPoints, bool isReloading) {
     this.hasShot = hasShot;
     this.hasJumped = hasJumped;
     this.aimDirection = aimDirection;
     this.horizontalDirection = horizontalDirection;
     this.healthPoints = healthPoints;
+    this.isReloading = isReloading;
 
     _lastUpdate = DateTime.now().millisecondsSinceEpoch;
   }
@@ -55,15 +57,16 @@ class Player {
     final hasJumped = bool.tryParse(jsonState["hasJumped"]);
     final horizontalDirection = double.tryParse(jsonState["horizontalDirection"]);
     final healthPoints = int.tryParse(jsonState["healthPoints"]);
+    final isReloading = bool.tryParse(jsonState["isReloading"]);
 
-    if(hasShot == null || hasJumped == null || horizontalDirection == null || healthPoints == null) {
+    if(hasShot == null || hasJumped == null || horizontalDirection == null || healthPoints == null || isReloading == null) {
       print("Json with missing or wrongly typed values: $jsonState");
       return 400;
     }
 
     try {
       final aimDirection = Vector2.fromJson(jsonState["aimDirection"]);
-      update(hasShot, hasJumped, aimDirection, horizontalDirection, healthPoints);
+      update(hasShot, hasJumped, aimDirection, horizontalDirection, healthPoints, isReloading);
       return 200;
     } on ArgumentError catch (_, e) {
       print(e);
@@ -96,6 +99,7 @@ class Player {
       },
       "horizontalDirection": horizontalDirection,
       "healthPoints": healthPoints,
+      "isReloading": isReloading,
     };
   }
 }

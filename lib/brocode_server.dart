@@ -142,14 +142,16 @@ class BrocodeService {
       final hasShot = bool.tryParse(body["hasShot"]);
       final hasJumped = bool.tryParse(body["hasJumped"]);
       final horizontalDirection = Utils.tryParseToDouble(body["horizontalDirection"]);
+      final healthPoints = int.tryParse(body["healthPoints"]);
+      final isReloading = bool.tryParse(body["isReloading"]);
 
-      if(hasShot == null || hasJumped == null || horizontalDirection == null) {
+      if(hasShot == null || hasJumped == null || horizontalDirection == null || healthPoints == null || isReloading == null) {
         return Response.badRequest(body: "Body with missing or wrongly typed values: $bodyString");
       }
 
       try {
         final aimDirection = Vector2.fromJson(body["aimDirection"]);
-        player.update(hasShot, hasJumped, aimDirection, horizontalDirection);
+        player.update(hasShot, hasJumped, aimDirection, horizontalDirection, healthPoints, isReloading);
         return Response.ok("Player updated.");
       } on ArgumentError catch (_, e) {
         return Response.badRequest(body: "Body with missing or wrongly typed aimDirection: $bodyString");

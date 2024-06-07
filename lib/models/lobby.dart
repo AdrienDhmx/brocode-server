@@ -1,3 +1,7 @@
+import 'dart:io';
+
+import 'package:brocode_server/utils/socket_utils.dart';
+
 import '../utils/utils.dart';
 import 'player.dart';
 
@@ -8,9 +12,9 @@ enum LobbyStatus {
 }
 
 class Lobby {
-  Lobby({required this.lobbyName, required String lobbyOwnerName}) {
+  Lobby({required this.lobbyName, required Player lobbyOwner}) {
     _id = Utils.getRandomUniqueIdentifier(12);
-    players.add(Player(name: lobbyOwnerName, id: 0));
+    players.add(lobbyOwner);
   }
 
   final String lobbyName;
@@ -22,7 +26,8 @@ class Lobby {
 
   int startTime = 0;
 
-  List<Player> players = [];
+  List<Player> _players = [];
+  List<Player> get players => _players;
 
   /// start the game for this lobby
   void startGame() {
@@ -31,6 +36,7 @@ class Lobby {
     for (Player player in players) {
       player.startGame(startTime);
     }
+    notifyAllPlayers("gameStarting", {});
   }
 
   /// Check all players to see if they are AFK
@@ -39,15 +45,15 @@ class Lobby {
       return;
     }
 
-    for (Player p in players) {
+    for (Player p in _players) {
       p.isAFK();
     }
   }
 
   /// Create and add a player to the lobby with this name
-  Player addPlayer(String playerName) {
-    final player = Player(name: playerName, id: players.length);
-    players.add(player);
+  Player addPlayer(Socket socket, String playerName) {
+    final player = Player(socket: socket, name: playerName, id: _players.length);
+    _players.add(player);
     return player;
   }
 
@@ -60,11 +66,30 @@ class Lobby {
     return player;
   }
 
+  void removeAllPlayers() {
+    _players = [];
+  }
+
   Player? getPlayer(int playerId) {
     if(playerId < 0 || playerId > players.length - 1) {
       return null;
     }
-    return players[playerId];
+    return _players[playerId];
+  }
+
+  void notifyAllPlayers(String action, Map<String, dynamic> data) {
+    for(Player player in _players) {
+      player.socket.writeAction(action, data);
+    }
+  }
+
+  void notifyAllPlayersExcept(String action, Map<String, dynamic> data, {required int playerId}) {
+    print("$action: $data");
+    for(Player player in _players) {
+      if(player.id != playerId) {
+        player.socket.writeAction(action, data);
+      }
+    }
   }
 
   Map<String, dynamic> toJson({bool summary = false, bool playerSummary = false}) {
@@ -77,14 +102,14 @@ class Lobby {
     if(summary) {
       return {
         ...defaultJson,
-        "owner": players[0].toJson(summary: true),
+        "owner": _players[0].toJson(summary: true),
       };
     }
 
     return {
       ...defaultJson,
       "players": [
-        ...players.map((player) => player.toJson(summary: playerSummary))
+        ..._players.map((player) => player.toJson(summary: playerSummary))
       ],
     };
   }

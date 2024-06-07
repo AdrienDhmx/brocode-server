@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'vector_2.dart';
 
 class Player {
-  Player({required this.name, required this.id});
+  Player({required this.socket, required this.name, required this.id});
+  final Socket socket;
   final String name;
   final int id;
 

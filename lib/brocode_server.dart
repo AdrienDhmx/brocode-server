@@ -1,204 +1,227 @@
 import 'dart:convert';
-import 'package:brocode_server/utils/response_utils.dart';
+import 'dart:io';
+
+import 'package:brocode_server/utils/socket_utils.dart';
 import 'package:brocode_server/utils/utils.dart';
-import 'package:shelf/shelf.dart';
-import 'package:shelf_router/shelf_router.dart';
 
 import 'models/lobby.dart';
+import 'models/player.dart';
 import 'models/vector_2.dart';
 
 class BrocodeService {
   List<Lobby> lobbies = [];
+  final String serverIP;
 
-  /// GET - /lobby <br>
-  /// get all lobbies in waiting <br>
-  /// @return a list of the lobbies in waiting with their owner
-  void getLobbiesInWaitingRoute(Router app) {
-    app.get('/lobby', (Request request) async {
-      final lobbiesJson = {
-        "lobbies": lobbies.filterMap(predicate: (l) => l.isWaiting, mapper: (l) => l.toJson(summary: true)),
-      };
-      return Response.ok(jsonEncode(lobbiesJson));
-    });
+  BrocodeService({required this.serverIP});
+
+  void startSocketServer(InternetAddress address, int port) async {
+    final serverSocket = await ServerSocket.bind(address, port);
+    print('Socket server listening on ws://${address.address}:$port');
+
+    await for (Socket socket in serverSocket) {
+      handleSocket(socket);
+    }
   }
 
-  /// POST - /lobby <br>
-  /// create a lobby with "name" and a player who is the lobby owner with "ownerName" <br>
-  /// @return the created lobby with its owner
-  void createLobbyRoute(Router app) {
-    app.post('/lobby', (Request request) async {
-      final bodyString = await request.readAsString();
-      final body = jsonDecode(bodyString);
-      final lobbyName = body["name"]?.toString();
-      final lobbyOwnerName = body["ownerName"]?.toString();
+  void handleSocket(Socket socket) {
+    print('New Socket connection');
 
-      if(lobbyName == null || lobbyOwnerName == null) {
-        return Response.badRequest(body: body);
-      }
-
-      final lobby = Lobby(lobbyName: lobbyName, lobbyOwnerName: lobbyOwnerName);
-      lobbies.add(lobby);
-
-      return Response.ok(jsonEncode(lobby.toJson(playerSummary: true)));
-    });
-  }
-
-  /// GET - /lobby/:lobbyId <br>
-  /// Get the lobby with the given id (waiting lobbies only) <br>
-  /// @return The lobby with all it's players and their state
-  void getLobbyRoute(Router app) {
-    app.get('/lobby/<LobbyId>', (Request request, String lobbyId) async {
-      final lobby = lobbies.findById(lobbyId);
-      if(lobby == null) {
-        return lobbyNotFound(lobbyId);
-      }
-      lobby.checkAFKPlayers();
-      return Response.ok(jsonEncode(lobby.toJson()));
-    });
-  }
-
-  /// DELETE - /lobby/:lobbyId <br>
-  /// Delete the lobby with the given id
-  void deleteLobbyRoute(Router app) {
-    app.delete('/lobby/<lobbyId>', (Request request, String lobbyId) {
-      final lobby = lobbies.removeById(lobbyId);
-      if(lobby == null) {
-        return lobbyNotFound(lobbyId);
-      }
-      return Response.ok("Lobby deleted");
-    });
-  }
-
-  /// POST - /lobby/:lobbyId <br>
-  /// Join the lobby with the given id and create a player with the name "name" <br>
-  /// @return The joined lobby with all its players and this created player
-  void joinLobbyRoute(Router app) {
-    app.post('/lobby/<lobbyId>', (Request request, String lobbyId) async {
-      final lobby = lobbies.findById(lobbyId);
-      if(lobby == null) {
-        return lobbyNotFound(lobbyId);
-      } else if(lobby.status != LobbyStatus.waiting) {
-        return Response.forbidden("The lobby doesn't accept new players at the moment.");
-      }
-
-      final bodyString = await request.readAsString();
-      final body = jsonDecode(bodyString);
-      final playerName = body["name"]?.toString();
-      if(playerName == null) {
-        return Response.badRequest(body: "The parameter 'name' for the player name is required");
-      }
-
-      final player = lobby.addPlayer(playerName);
-      final json = {
-        "lobby": lobby.toJson(playerSummary: true),
-        "player": player.toJson(summary: true),
-      };
-      return Response.ok(jsonEncode(json));
-    });
-  }
-
-  /// DELETE - /lobby/:lobbyId/player/:playerId <br>
-  /// Remove this player from this lobby
-  void playerLeaveLobbyRoute(Router app) {
-    app.delete('/lobby/<lobbyId>/player/<playerId>', (Request request, String lobbyId, String playerId) {
-      final lobby = lobbies.findById(lobbyId);
-      if(lobby == null) {
-        return lobbyNotFound(lobbyId);
-      }
-
-      final intPlayerId = int.tryParse(playerId);
-      if(intPlayerId == null) {
-        return Response.badRequest(body: "The playerId must be an int.");
-      }
-
-      final player = lobby.removePlayer(intPlayerId);
-      if(player == null) {
-        return playerNotFound(lobbyId, intPlayerId);
-      }
-      return Response.ok("Player $playerId removed from the lobby $lobbyId");
-    });
-  }
-
-  /// PUT - /lobby/:lobbyId/player/:playerId <br>
-  /// Update the state of this player.
-  void updatePlayer(Router app) {
-    app.put('/lobby/<lobbyId>/player/<playerId>', (Request request, String lobbyId, String playerId) async {
-      final lobby = lobbies.findById(lobbyId);
-      if(lobby == null) {
-        return lobbyNotFound(lobbyId);
-      }
-      final intPlayerId = int.tryParse(playerId);
-      if(intPlayerId == null) {
-        return Response.badRequest(body: "The playerId must be an int.");
-      }
-
-      final player = lobby.getPlayer(intPlayerId);
-      if(player == null) {
-        return playerNotFound(lobbyId, intPlayerId);
-      }
-      final bodyString = await request.readAsString();
-      final body = jsonDecode(bodyString);
-
-      final hasShot = bool.tryParse(body["hasShot"]);
-      final hasJumped = bool.tryParse(body["hasJumped"]);
-      final horizontalDirection = Utils.tryParseToDouble(body["horizontalDirection"]);
-      final healthPoints = int.tryParse(body["healthPoints"]);
-      final isReloading = bool.tryParse(body["isReloading"]);
-
-      if(hasShot == null || hasJumped == null || horizontalDirection == null || healthPoints == null || isReloading == null) {
-        return Response.badRequest(body: "Body with missing or wrongly typed values: $bodyString");
-      }
-
+    socket.listen((List<int> data) {
+      final message = utf8.decode(data);
       try {
-        final aimDirection = Vector2.fromJson(body["aimDirection"]);
-        player.update(hasShot, hasJumped, aimDirection, horizontalDirection, healthPoints, isReloading);
-        return Response.ok("Player updated.");
-      } on ArgumentError catch (_, e) {
-        return Response.badRequest(body: "Body with missing or wrongly typed aimDirection: $bodyString");
+        final jsonData = jsonDecode(message);
+        handleMessage(socket, jsonData);
+      } catch(e) {
+        print("$e: $message");
       }
+    },
+    onError: (error) {
+      print('Socket error: $error');
+    },
+    onDone: () {
+      print('Socket connection closed');
+      socket.close();
     });
   }
 
-  /// PUT - /lobby/:lobbyId/start-game <br>
-  /// Start the game for this lobby
-  void startGame(Router app) {
-    app.put('/lobby/<lobbyId>/start-game', (Request request, String lobbyId){
-      final lobby = lobbies.findById(lobbyId);
-      if(lobby == null) {
-        return lobbyNotFound(lobbyId);
-      }
-      lobby.startGame();
-      return Response.ok("Game started.");
-    });
+  /// Handle incoming Socket messages
+  void handleMessage(Socket socket, Map<String, dynamic> data) {
+    switch (data['action']) {
+      case 'getAvailableLobbies':
+        handleGetLobbiesInWaiting(socket);
+        break;
+      case 'createLobby':
+        handleCreateLobby(socket, data);
+        break;
+      case 'getLobby':
+        handleGetLobby(socket, data);
+        break;
+      case 'deleteLobby':
+        handleDeleteLobby(socket, data);
+        break;
+      case 'joinLobby':
+        handleJoinLobby(socket, data);
+        break;
+      case 'playerLeaveLobby':
+        handlePlayerLeaveLobby(socket, data);
+        break;
+      case 'updatePlayer':
+        handleUpdatePlayer(socket, data);
+        break;
+      case 'startGame':
+        handleStartGame(socket, data);
+        break;
+      default:
+        socket.writeError('Unknown action: ${data['action']}');
+    }
   }
 
-  Handler get handler {
-    final app = Router();
+  void handleGetLobbiesInWaiting(Socket socket) {
+    final lobbiesJson = {
+      "lobbies": lobbies.where((l) => l.isWaiting).map((l) => l.toJson()).toList(),
+    };
+    socket.writeAction("availableLobbiesResponse", lobbiesJson);
+  }
 
-    app.get('/', (Request request) {
-      return Response.ok('Welcome to Brocode !');
-    });
+  void handleCreateLobby(Socket socket, Map<String, dynamic> data) {
+    final lobbyName = data["name"]?.toString();
+    final lobbyOwnerName = data["ownerName"]?.toString();
 
-    // /lobby
-    getLobbiesInWaitingRoute(app);
-    createLobbyRoute(app);
+    if (lobbyName == null || lobbyOwnerName == null) {
+      socket.writeError('Invalid parameters');
+      return;
+    }
 
-    // /lobby/<lobbyId>
-    getLobbyRoute(app);
-    deleteLobbyRoute(app);
-    joinLobbyRoute(app);
+    final player = Player(socket: socket, name: lobbyOwnerName, id: 0);
+    final lobby = Lobby(lobbyName: lobbyName, lobbyOwner: player);
+    lobbies.add(lobby);
 
-    // /lobby/<lobbyId>/player/<playerId>
-    playerLeaveLobbyRoute(app);
-    updatePlayer(app);
+    socket.writeAction("lobbyCreatedResponse", lobby.toJson());
+  }
 
-    // /lobby/<lobbyId>/start-game
-    startGame(app);
+  void handleGetLobby(Socket socket, Map<String, dynamic> data) {
+    final lobbyId = data["lobbyId"]?.toString() ?? '';
+    final lobby = lobbies.findById(lobbyId);
+    if (lobby == null) {
+      socket.writeLobbyNotFoundError(data["lobbyId"]);
+      return;
+    }
+    lobby.checkAFKPlayers();
+    socket.writeAction("lobby", lobby.toJson());
+  }
 
-    app.all('/<ignored|.*>', (Request request) {
-      return Response.notFound('Page not found');
-    });
+  void handleDeleteLobby(Socket socket, Map<String, dynamic> data) {
+    final lobbyId = data["lobbyId"]?.toString() ?? '';
+    final lobby = lobbies.removeById(lobbyId);
+    if (lobby == null) {
+      socket.writeLobbyNotFoundError(data["lobbyId"]);
+      return;
+    } else if (lobby.players.isNotEmpty) {
+      lobby.notifyAllPlayers("lobbyClosing", {});
+      lobby.removeAllPlayers();
+    }
+  }
 
-    return app.call;
+  void handleJoinLobby(Socket socket, Map<String, dynamic> data) {
+    final lobbyId = data["lobbyId"]?.toString() ?? '';
+    final lobby = lobbies.findById(lobbyId);
+    if (lobby == null) {
+      socket.writeLobbyNotFoundError(data["lobbyId"]);
+      return;
+    } else if (lobby.status != LobbyStatus.waiting) {
+      socket.writeError("The lobby doesn't accept new players at the moment.");
+      return;
+    }
+
+    final playerName = data["name"]?.toString();
+    if (playerName == null) {
+      socket.writeError("The parameter 'name' for the player name is required");
+      return;
+    }
+
+    final player = lobby.addPlayer(socket, playerName);
+    final lobbyData = lobby.toJson(summary: false, playerSummary: false);
+    lobby.notifyAllPlayersExcept("playerJoining", player.toJson(), playerId: player.id);
+    socket.writeAction("joinLobbyResponse", lobbyData);
+  }
+
+  void handlePlayerLeaveLobby(Socket socket, Map<String, dynamic> data) {
+    final lobbyId = data["lobbyId"]?.toString() ?? '';
+    final playerId = data["playerId"]?.toString() ?? '';
+    final lobby = lobbies.findById(lobbyId);
+    if (lobby == null) {
+      socket.writeLobbyNotFoundError(data["lobbyId"]);
+      return;
+    }
+
+    final intPlayerId = int.tryParse(playerId);
+    if (intPlayerId == null) {
+      socket.writeError('The playerId must be an int.');
+      return;
+    }
+
+    final player = lobby.removePlayer(intPlayerId);
+    if (player == null) {
+      socket.writeError('Player not found');
+      return;
+    }
+    lobby.notifyAllPlayers("playerLeaving", player.toJson());
+  }
+
+  void handleUpdatePlayer(Socket socket, Map<String, dynamic> data) {
+    final lobbyId = data["lobbyId"]?.toString() ?? '';
+    final playerId = data["playerId"]?.toString() ?? '';
+    final lobby = lobbies.findById(lobbyId);
+    if (lobby == null) {
+      socket.writeLobbyNotFoundError(data["lobbyId"]);
+      return;
+    }
+    final intPlayerId = int.tryParse(playerId);
+    if (intPlayerId == null) {
+      socket.writeError('The playerId must be an int.');
+      return;
+    }
+
+    final player = lobby.getPlayer(intPlayerId);
+    if (player == null) {
+      socket.writeError('Player not found');
+      return;
+    }
+
+    final hasShot = bool.tryParse(data["hasShot"]);
+    final hasJumped = bool.tryParse(data["hasJumped"]);
+    final horizontalDirection = Utils.tryParseToDouble(data["horizontalDirection"]);
+    final healthPoints = int.tryParse(data["healthPoints"]);
+    final isReloading = bool.tryParse(data["isReloading"]);
+
+    if (hasShot == null || hasJumped == null || horizontalDirection == null || healthPoints == null || isReloading == null) {
+      socket.writeError('Body with missing or wrongly typed values');
+      return;
+    }
+
+    try {
+      final aimDirection = Vector2.fromJson(data["aimDirection"]);
+      player.update(hasShot, hasJumped, aimDirection, horizontalDirection, healthPoints, isReloading);
+      // notify all players of the update
+      lobby.notifyAllPlayersExcept("playerUpdated", player.toJson(), playerId: intPlayerId);
+    } on ArgumentError catch (_) {
+      socket.writeError('Body with missing or wrongly typed aimDirection');
+    }
+  }
+
+  void handleStartGame(Socket socket, Map<String, dynamic> data) {
+    final lobbyId = data["lobbyId"]?.toString() ?? '';
+    final lobby = lobbies.findById(lobbyId);
+    if (lobby == null) {
+      socket.writeLobbyNotFoundError(data["lobbyId"]);
+      return;
+    }
+    // lobby notify all players
+    lobby.startGame();
+  }
+
+  void start() {
+    final address = InternetAddress.tryParse(serverIP);
+    startSocketServer(address ?? InternetAddress.anyIPv4, 8083);
   }
 }

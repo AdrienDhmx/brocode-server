@@ -28,6 +28,7 @@ class Lobby {
 
   List<Player> _players = [];
   List<Player> get players => _players;
+  List<Player> get activePlayers => _players.where((p) => !p.isAFK()).toList();
 
   /// start the game for this lobby
   void startGame() {
@@ -84,7 +85,6 @@ class Lobby {
   }
 
   void notifyAllPlayersExcept(String action, Map<String, dynamic> data, {required int playerId}) {
-    print("$action: $data");
     for(Player player in _players) {
       if(player.id != playerId) {
         player.socket.writeAction(action, data);

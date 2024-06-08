@@ -40,8 +40,29 @@ class BrocodeService {
     },
     onDone: () {
       print('Socket connection closed');
+
+      findLobbyWithSocket(socket, (lobby, player) {
+        lobby.removePlayer(player.id);
+        if(lobby.activePlayers.isEmpty) {
+          lobbies.removeById(lobby.id);
+          print("LOBBY DELETED");
+        } else {
+          lobby.notifyAllPlayers("playerLeaving", player.toJson());
+        }
+      });
+
       socket.close();
     });
+  }
+
+  void findLobbyWithSocket(Socket socket, Function(Lobby, Player) action) {
+    for (Lobby lobby in lobbies) {
+      for (Player player in lobby.players) {
+        if(player.socket == socket) {
+          action(lobby, player);
+          return;
+        }
+      }}
   }
 
   /// Handle incoming Socket messages
@@ -165,7 +186,12 @@ class BrocodeService {
       socket.writeError('Player not found');
       return;
     }
-    lobby.notifyAllPlayers("playerLeaving", player.toJson());
+
+    if(lobby.activePlayers.isEmpty) {
+      lobbies.removeById(lobbyId);
+    } else {
+      lobby.notifyAllPlayers("playerLeaving", player.toJson());
+    }
   }
 
   void handleUpdatePlayer(Socket socket, Map<String, dynamic> data) {

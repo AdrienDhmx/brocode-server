@@ -28,7 +28,7 @@ class Lobby {
 
   List<Player> _players = [];
   List<Player> get players => _players;
-  List<Player> get activePlayers => _players.where((p) => !p.isAFK()).toList();
+  List<Player> get activePlayers => _players.where((p) => !p.isAFK).toList();
 
   /// start the game for this lobby
   void startGame() {
@@ -37,7 +37,7 @@ class Lobby {
     for (Player player in players) {
       player.startGame(startTime);
     }
-    notifyAllPlayers("gameStarting", {});
+    notifyAllPlayers("gameStarting", toJson());
   }
 
   /// Check all players to see if they are AFK
@@ -47,7 +47,7 @@ class Lobby {
     }
 
     for (Player p in _players) {
-      p.isAFK();
+      p.updateIsAFK();
     }
   }
 
@@ -85,7 +85,7 @@ class Lobby {
   }
 
   void notifyAllPlayersExcept(String action, Map<String, dynamic> data, {required int playerId}) {
-    for(Player player in _players) {
+    for(Player player in activePlayers) {
       if(player.id != playerId) {
         player.socket.writeAction(action, data);
       }
@@ -97,6 +97,7 @@ class Lobby {
       "id": id,
       "name": lobbyName,
       "lobbyStatus": status.index,
+      "startTime": startTime,
     };
 
     if(summary) {

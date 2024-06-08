@@ -9,7 +9,7 @@ class Player {
   final int id;
 
   int _lastUpdate = 0;
-  bool _isAFK = false;
+  bool isAFK = false;
   bool _hasLeft = false;
 
   bool hasShot = false;
@@ -21,25 +21,26 @@ class Player {
 
   /// init the player for the game
   void startGame(int time) {
-    if(!_isAFK) {
+    if(!isAFK) {
       _lastUpdate = time;
     }
   }
 
   /// Check if the player is AFK and return the result
-  bool isAFK() {
+  bool updateIsAFK() {
     if(_hasLeft) {
+      isAFK = true;
       return true;
     }
     final currentTime = DateTime.now().millisecondsSinceEpoch;
-    _isAFK = currentTime - _lastUpdate > 1000 * 60 * 2;
-    return _isAFK;
+    isAFK = currentTime - _lastUpdate > 1000 * 60 * 2;
+    return isAFK;
   }
 
   /// set the player as AFK
   void playerLeftGame() {
     _hasLeft = true;
-    _isAFK = true;
+    isAFK = true;
   }
 
   /// Update the player state
@@ -81,7 +82,7 @@ class Player {
     final Map<String, dynamic> json = {
       "id": id,
       "name": name,
-      "isAFK": _isAFK,
+      "isAFK": isAFK,
       "hasLeft": _hasLeft,
     };
 

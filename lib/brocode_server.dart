@@ -26,6 +26,7 @@ class BrocodeService {
   void handleSocket(Socket socket) {
     print('New Socket connection');
 
+    socket.setOption(SocketOption.tcpNoDelay, true);
     socket.listen((List<int> data) {
       final message = utf8.decode(data);
       try {

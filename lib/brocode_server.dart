@@ -32,7 +32,7 @@ class BrocodeService {
 
       if(message.contains("}{")) {
         final messages = message.split("}{");
-        message = messages[messages.length - 1];
+        message = '{${messages[messages.length - 1]}';
       }
 
       try {

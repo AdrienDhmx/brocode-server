@@ -28,7 +28,13 @@ class BrocodeService {
 
     socket.setOption(SocketOption.tcpNoDelay, true);
     socket.listen((List<int> data) {
-      final message = utf8.decode(data);
+      String message = utf8.decode(data);
+
+      if(message.contains("}{")) {
+        final messages = message.split("}{");
+        message = messages[messages.length - 1];
+      }
+
       try {
         final jsonData = jsonDecode(message);
         handleMessage(socket, jsonData);

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -11,16 +12,39 @@ import 'models/vector_2.dart';
 class BrocodeService {
   List<Lobby> lobbies = [];
   final String serverIP;
+  StreamSubscription<Socket>? _serverListener;
 
   BrocodeService({required this.serverIP});
 
-  void startSocketServer(InternetAddress address, int port) async {
+  void _onServerError(error) {
+    print("Error server: $error");
+    _restartServer();
+  }
+
+  void _onServerDone() {
+    print("Server is done.");
+    _restartServer();
+  }
+
+  void _restartServer() {
+    print("Restarting server...");
+    _serverListener?.cancel();
+    start();
+  }
+
+  void _startSocketServer(InternetAddress address, int port) async {
     final serverSocket = await ServerSocket.bind(address, port);
     print('Socket server listening on ws://${address.address}:$port');
 
-    await for (Socket socket in serverSocket) {
-      handleSocket(socket);
-    }
+    // await for (Socket socket in serverSocket) {
+    //   handleSocket(socket);
+    // }
+
+    _serverListener = serverSocket.listen(
+      handleSocket,
+      onError: _onServerError,
+      onDone: _onServerDone,
+    );
   }
 
   void handleSocket(Socket socket) {
@@ -255,6 +279,6 @@ class BrocodeService {
 
   void start() {
     final address = InternetAddress.tryParse(serverIP);
-    startSocketServer(address ?? InternetAddress.anyIPv4, 8083);
+    _startSocketServer(address ?? InternetAddress.anyIPv4, 8083);
   }
 }

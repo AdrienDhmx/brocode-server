@@ -250,15 +250,16 @@ class BrocodeService {
     final horizontalDirection = Utils.tryParseToDouble(data["horizontalDirection"]);
     final healthPoints = int.tryParse(data["healthPoints"]);
     final isReloading = bool.tryParse(data["isReloading"]);
+    final isDead = bool.tryParse(data["isDead"]);
 
-    if (hasShot == null || hasJumped == null || horizontalDirection == null || healthPoints == null || isReloading == null) {
+    if (hasShot == null || hasJumped == null || horizontalDirection == null || healthPoints == null || isReloading == null || isDead == null) {
       socket.writeError('Body with missing or wrongly typed values');
       return;
     }
 
     try {
       final aimDirection = Vector2.fromJson(data["aimDirection"]);
-      player.update(hasShot, hasJumped, aimDirection, horizontalDirection, healthPoints, isReloading);
+      player.update(hasShot, hasJumped, aimDirection, horizontalDirection, healthPoints, isReloading, isDead);
       // notify all players of the update
       lobby.notifyAllPlayersExcept("playerUpdated", player.toJson(), playerId: intPlayerId);
     } on ArgumentError catch (_) {

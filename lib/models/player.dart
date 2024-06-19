@@ -18,6 +18,7 @@ class Player {
   double horizontalDirection = 0.0;
   int healthPoints = 100;
   bool isReloading = false;
+  bool isDead = false;
 
   /// init the player for the game
   void startGame(int time) {
@@ -44,13 +45,14 @@ class Player {
   }
 
   /// Update the player state
-  void update(bool hasShot, bool hasJumped, Vector2 aimDirection, double horizontalDirection, int healthPoints, bool isReloading) {
+  void update(bool hasShot, bool hasJumped, Vector2 aimDirection, double horizontalDirection, int healthPoints, bool isReloading, bool isDead) {
     this.hasShot = hasShot;
     this.hasJumped = hasJumped;
     this.aimDirection = aimDirection;
     this.horizontalDirection = horizontalDirection;
     this.healthPoints = healthPoints;
     this.isReloading = isReloading;
+    this.isDead = isDead;
 
     _lastUpdate = DateTime.now().millisecondsSinceEpoch;
   }
@@ -62,15 +64,16 @@ class Player {
     final horizontalDirection = double.tryParse(jsonState["horizontalDirection"]);
     final healthPoints = int.tryParse(jsonState["healthPoints"]);
     final isReloading = bool.tryParse(jsonState["isReloading"]);
+    final isDead = bool.tryParse(jsonState["isDead"]);
 
-    if(hasShot == null || hasJumped == null || horizontalDirection == null || healthPoints == null || isReloading == null) {
+    if(hasShot == null || hasJumped == null || horizontalDirection == null || healthPoints == null || isReloading == null || isDead == null) {
       print("Json with missing or wrongly typed values: $jsonState");
       return 400;
     }
 
     try {
       final aimDirection = Vector2.fromJson(jsonState["aimDirection"]);
-      update(hasShot, hasJumped, aimDirection, horizontalDirection, healthPoints, isReloading);
+      update(hasShot, hasJumped, aimDirection, horizontalDirection, healthPoints, isReloading, isDead);
       return 200;
     } on ArgumentError catch (_, e) {
       print(e);
@@ -104,6 +107,7 @@ class Player {
       "horizontalDirection": horizontalDirection,
       "healthPoints": healthPoints,
       "isReloading": isReloading,
+      "isDead": isDead,
     };
   }
 }

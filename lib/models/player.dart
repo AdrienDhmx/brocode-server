@@ -15,6 +15,7 @@ class Player {
   bool hasShot = false;
   bool hasJumped = false;
   Vector2 aimDirection = Vector2();
+  Vector2 position = Vector2();
   double horizontalDirection = 0.0;
   int healthPoints = 100;
   bool isReloading = false;
@@ -45,10 +46,11 @@ class Player {
   }
 
   /// Update the player state
-  void update(bool hasShot, bool hasJumped, Vector2 aimDirection, double horizontalDirection, int healthPoints, bool isReloading, bool isDead) {
+  void update(bool hasShot, bool hasJumped, Vector2 aimDirection, double horizontalDirection, int healthPoints, bool isReloading, bool isDead, Vector2 position) {
     this.hasShot = hasShot;
     this.hasJumped = hasJumped;
     this.aimDirection = aimDirection;
+    this.position = position;
     this.horizontalDirection = horizontalDirection;
     this.healthPoints = healthPoints;
     this.isReloading = isReloading;
@@ -73,7 +75,8 @@ class Player {
 
     try {
       final aimDirection = Vector2.fromJson(jsonState["aimDirection"]);
-      update(hasShot, hasJumped, aimDirection, horizontalDirection, healthPoints, isReloading, isDead);
+      final position = Vector2.fromJson(jsonState["position"]);
+      update(hasShot, hasJumped, aimDirection, horizontalDirection, healthPoints, isReloading, isDead, position);
       return 200;
     } on ArgumentError catch (_, e) {
       print(e);
@@ -103,6 +106,10 @@ class Player {
       "aimDirection": {
         "x": aimDirection.x,
         "y": aimDirection.y,
+      },
+      "position": {
+        "x": position.x,
+        "y": position.y,
       },
       "horizontalDirection": horizontalDirection,
       "healthPoints": healthPoints,

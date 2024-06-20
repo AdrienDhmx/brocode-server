@@ -259,11 +259,12 @@ class BrocodeService {
 
     try {
       final aimDirection = Vector2.fromJson(data["aimDirection"]);
-      player.update(hasShot, hasJumped, aimDirection, horizontalDirection, healthPoints, isReloading, isDead);
+      final position = Vector2.fromJson(data["position"]);
+      player.update(hasShot, hasJumped, aimDirection, horizontalDirection, healthPoints, isReloading, isDead, position);
       // notify all players of the update
       lobby.notifyAllPlayersExcept("playerUpdated", player.toJson(), playerId: intPlayerId);
     } on ArgumentError catch (_) {
-      socket.writeError('Body with missing or wrongly typed aimDirection');
+      socket.writeError('Body with missing or wrongly typed aimDirection or position');
     }
   }
 

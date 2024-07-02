@@ -36,10 +36,6 @@ class BrocodeService {
     final serverSocket = await ServerSocket.bind(address, port);
     print('Socket server listening on ws://${address.address}:$port');
 
-    // await for (Socket socket in serverSocket) {
-    //   handleSocket(socket);
-    // }
-
     _serverListener = serverSocket.listen(
       handleSocket,
       onError: _onServerError,
@@ -52,18 +48,27 @@ class BrocodeService {
 
     socket.setOption(SocketOption.tcpNoDelay, true);
     socket.listen((List<int> data) {
-      String message = utf8.decode(data);
-
-      if(message.contains("}{")) {
-        final messages = message.split("}{");
-        message = '{${messages[messages.length - 1]}';
-      }
 
       try {
+        // some message data are not correctly formatted for utf8
+        // LOGS:
+        // New Socket connection
+        // Unhandled exception:
+        // FormatException: Missing extension byte (at offset 6)
+        // #0      _Utf8Decoder.convertSingle (dart:convert-patch/convert_patch.dart:1741)
+        // #1      Utf8Decoder.convert (dart:convert/utf.dart:349)
+        // #2      Utf8Codec.decode (dart:convert/utf.dart:63)
+        // #3      BrocodeService.handleSocket.<anonymous closure> (package:brocode_server/brocode_server.dart:55)
+        String message = utf8.decode(data);
+
+        if(message.contains("}{")) {
+          final messages = message.split("}{");
+          message = '{${messages[messages.length - 1]}';
+        }
         final jsonData = jsonDecode(message);
         handleMessage(socket, jsonData);
       } catch(e) {
-        print("$e: $message");
+        print("$e: $data");
       }
     },
     onError: (error) {
